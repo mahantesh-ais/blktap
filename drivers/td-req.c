@@ -361,26 +361,41 @@ guest_copy2(struct td_xenblkif * const blkif,
     ASSERT(blkif->ctx);
     ASSERT(tapreq);
     ASSERT(blkif_rq_data(&tapreq->msg));
-	ASSERT(tapreq->msg.nr_segments > 0);
-	ASSERT(tapreq->msg.nr_segments <= ARRAY_SIZE(tapreq->gcopy_segs));
+    ASSERT(tapreq->msg.nr_segments > 0);
+    ASSERT(tapreq->msg.nr_segments <= ARRAY_SIZE(tapreq->gcopy_segs));
 
     for (i = 0; i < tapreq->msg.nr_segments; i++) {
         struct blkif_request_segment *blkif_seg = &tapreq->msg.seg[i];
         struct gntdev_grant_copy_segment *gcopy_seg = &tapreq->gcopy_segs[i];
-        gcopy_seg->iov.iov_base = tapreq->vma + (i << PAGE_SHIFT)
-            + (blkif_seg->first_sect << SECTOR_SHIFT);
-        gcopy_seg->iov.iov_len = (blkif_seg->last_sect
-                - blkif_seg->first_sect
-                + 1)
-            << SECTOR_SHIFT;
-        gcopy_seg->ref = blkif_seg->gref;
-        gcopy_seg->offset = blkif_seg->first_sect << SECTOR_SHIFT;
+       	//TODO: verify
+	gcopy_seg->flags = blkif_rq_wr(&tapreq->msg); // **verify this **
+	
+	//TODO: based on direction update the domid either in source or dest
+	if(!gcopy_seg->flags){ //copy to source 
+		gcopy_seg->source.foreign.domid = blkif->domid;	
+		gcopy_seg->source.foreign.ref = blkif_seg->gref;
+		gcopy_seg->source.foreign.offset = blkif_seg->first_sect << SECTOR_SHIFT;
+
+		gcopy_seg->dest.virt = tapreq->vma + (i << PAGE_SHIFT)
+			+ (blkif_seg->first_sect << SECTOR_SHIFT);
+	}
+	else{//copy to dest
+		gcopy_seg->dest.foreign.domid = blkif->domid;	
+		gcopy_seg->dest.foreign.ref = blkif_seg->gref;
+		gcopy_seg->dest.foreign.offset = blkif_seg->first_sect << SECTOR_SHIFT;
+
+		gcopy_seg->source.virt = tapreq->vma + (i << PAGE_SHIFT)
+			+ (blkif_seg->first_sect << SECTOR_SHIFT);
+	}
+        gcopy_seg->len = (blkif_seg->last_sect
+               	- blkif_seg->first_sect
+               	+ 1)
+          	<< SECTOR_SHIFT;
     }
 
-    gcopy.dir = blkif_rq_wr(&tapreq->msg);
-    gcopy.domid = blkif->domid;
+    //blktap3_integrate
     gcopy.count = tapreq->msg.nr_segments;
-	gcopy.segments = tapreq->gcopy_segs;
+    gcopy.segments = tapreq->gcopy_segs;
 
     err = -ioctl(blkif->ctx->gntdev_fd, IOCTL_GNTDEV_GRANT_COPY, &gcopy);
     if (err) {
