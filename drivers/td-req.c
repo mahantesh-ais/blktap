@@ -367,11 +367,17 @@ guest_copy2(struct td_xenblkif * const blkif,
     for (i = 0; i < tapreq->msg.nr_segments; i++) {
         struct blkif_request_segment *blkif_seg = &tapreq->msg.seg[i];
         struct gntdev_grant_copy_segment *gcopy_seg = &tapreq->gcopy_segs[i];
-       	//TODO: verify
-	gcopy_seg->flags = blkif_rq_wr(&tapreq->msg); // **verify this **
+
+	gcopy_seg->flags = 0; /* clear the flags */
+
+ 	if(blkif_rq_wr(&tapreq->msg)){ /* 1 to copy from guest */
+		gcopy_seg->flags |= GNTCOPY_source_gref;
+	}
+	else{ /* 0 to copy to guest */
+		gcopy_seg->flags |= GNTCOPY_dest_gref;
+	}
 	
-	//TODO: based on direction update the domid either in source or dest
-	if(!gcopy_seg->flags){ //copy to source 
+	if(gcopy_seg->flags & GNTCOPY_source_gref ){ /* copy from guest */
 		gcopy_seg->source.foreign.domid = blkif->domid;	
 		gcopy_seg->source.foreign.ref = blkif_seg->gref;
 		gcopy_seg->source.foreign.offset = blkif_seg->first_sect << SECTOR_SHIFT;
@@ -379,7 +385,7 @@ guest_copy2(struct td_xenblkif * const blkif,
 		gcopy_seg->dest.virt = tapreq->vma + (i << PAGE_SHIFT)
 			+ (blkif_seg->first_sect << SECTOR_SHIFT);
 	}
-	else{//copy to dest
+	else if(gcopy_seg->flags & GNTCOPY_dest_gref){ /* copy to guest */
 		gcopy_seg->dest.foreign.domid = blkif->domid;	
 		gcopy_seg->dest.foreign.ref = blkif_seg->gref;
 		gcopy_seg->dest.foreign.offset = blkif_seg->first_sect << SECTOR_SHIFT;
