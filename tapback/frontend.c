@@ -58,12 +58,14 @@ xenbus_switch_state(vbd_t * const device,
 
     err = -tapback_device_printf(device, XBT_NULL, "state", false, "%u",
             state);
+    printf("\n trying to switch the backend state \n");/*Add-to-debug */
     if (err)
         WARN(device, "failed to switch back-end state to %s: %s\n",
                 xenbus_strstate(state), strerror(err));
     else {
         DBG(device, "switched back-end state to %s\n", xenbus_strstate(state));
         device->state = state;
+	printf("\nSwitched the state of the backend device \n");/*Add-to-debug */
     }
     return err;
 }
@@ -364,6 +366,8 @@ xenbus_connect(vbd_t *device) {
      */
     if (err == ESRCH)
         goto out;
+    else/*Add-to-debug  */
+	printf("\n tapdisk available and connected  \n");
     /*
      * Even if tapdisk is already connected to the shared ring, we continue
      * connecting since we don't know how far the connection process had gone
@@ -437,23 +441,27 @@ frontend_changed(vbd_t * const device, const XenbusState state)
 
     DBG(device, "front-end switched to state %s\n", xenbus_strstate(state));
 	device->frontend_state = state;
-
+    printf("\n front-end new state is %s \n", xenbus_strstate(state));
+    printf("\n hot-plug state is %d \n",device->hotplug_status_connected);
     switch (state) {
         case XenbusStateInitialising:
-			if (device->hotplug_status_connected)
-				err = xenbus_switch_state(device, XenbusStateInitWait);
+			/* if (device->hotplug_status_connected)--Commented out to check the effect */
+			err = xenbus_switch_state(device, XenbusStateInitWait);
             break;
         case XenbusStateInitialised:
     	case XenbusStateConnected:
-            if (!device->hotplug_status_connected)
-                DBG(device, "udev scripts haven't yet run\n");
-            else {
+            /*if (!device->hotplug_status_connected)
+                DBG(device, "udev scripts haven't yet run\n"); --Commented out to check the impact */
+            /*else { --Commented out in coordination to the above comment */
                 if (device->state != XenbusStateConnected) {
                     DBG(device, "connecting to front-end\n");
-                    err = xenbus_connect(device);
-                } else
+           	    printf("\n TAPBACK: Connecting to device \n"); 
+	            err = xenbus_connect(device);
+                } else { /*Add-to-debug*/
                     DBG(device, "already connected\n");
-            }
+		    printf("\n TAPBACK: device already connected \n"); /*Add-to-debug*/
+		} /*Add-to-debug*/
+            /*} --Commented out in coordination to the opening braces */
             break;
         case XenbusStateClosing:
             err = xenbus_switch_state(device, XenbusStateClosing);
@@ -503,13 +511,14 @@ tapback_backend_handle_otherend_watch(backend_t *backend,
                 path);
         return ENODEV;
     }
-
+    printf("\n front-end device found \n");
     /*
      * Read the new front-end's state.
      */
 	s = tapback_xs_read(device->backend->xs, XBT_NULL, "%s",
 			device->frontend_state_path);
     if (!s) {
+	printf("\nXen-bus node is missing \n");
         err = errno;
 		/*
          * If the front-end XenBus node is missing, the XenBus device has been
@@ -534,12 +543,15 @@ tapback_backend_handle_otherend_watch(backend_t *backend,
 		}
     } else {
         state = strtol(s, &end, 0);
-        if (*end != 0 || end == s) {
+        printf("\n frontend new state is %d \n",state);
+	if (*end != 0 || end == s) {
             WARN(device, "invalid XenBus state '%s'\n", s);
             err = EINVAL;
-        } else
+        } else {
             err = frontend_changed(device, state);
-    }
+          	
+	  }  
+      }
 
 out:
     free(s);

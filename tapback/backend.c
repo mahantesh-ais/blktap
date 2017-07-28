@@ -495,12 +495,14 @@ hotplug_status_changed(vbd_t * const device) {
 	hotplug_status = tapback_device_read(device, XBT_NULL, HOTPLUG_STATUS_KEY);
 	if (!hotplug_status) {
 		err = -errno;
+		printf("\n Invalid hot-plug status \n");
 		goto out;
 	}
 	if (!strcmp(hotplug_status, "connected")) {
 
         DBG(device, "physical device available (hotplug scripts ran)\n");
 
+		printf("\n hot-plug status: connected \n");
 		device->hotplug_status_connected = true;
 
         device_type = tapback_device_read_otherend(device, XBT_NULL,
@@ -569,6 +571,7 @@ hotplug_status_changed(vbd_t * const device) {
 	else {
 		WARN(device, "invalid hotplug-status value %s\n", hotplug_status);
 		err = -EINVAL;
+		printf("\n Invalid hot-plug status  \n");
 	}
 
 out:
@@ -676,7 +679,7 @@ tapback_backend_probe_device(backend_t *backend,
     int err = 0;
     vbd_t *device = NULL;
     char * s = NULL;
-
+    printf("\n Probing the device now \n");
 	ASSERT(backend);
     ASSERT(devname);
 
@@ -996,7 +999,7 @@ tapback_backend_handle_backend_watch(backend_t *backend,
     else
         exists = true;
     err = 0;
-
+    printf("\n Created XenStore key  \n");/*Add-to-debug*/
     /*
      * Master tapback: check if there's tapback for this domain. If there isn't
      * one, create it, otherwise ignore this event, the per-domain tapback will
@@ -1073,6 +1076,7 @@ tapback_backend_handle_backend_watch(backend_t *backend,
                  */
                 err = execvp(tapback_name, args);
                 err = -errno;
+		printf("\n Failed to replace the master process \n");
                 WARN(NULL, "failed to replace master process with slave: %s\n",
                         strerror(-err));
                 abort();

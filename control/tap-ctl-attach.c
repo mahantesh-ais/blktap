@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) 2016, Citrix Systems, Inc.
  *
  * All rights reserved.
@@ -55,9 +55,12 @@ tap_ctl_attach(const int id, const int minor)
 		return err;
 
 	if (message.type == TAPDISK_MESSAGE_ATTACH_RSP) {
+		/*printf("\n tapdisk attach response received \n");Add-to-debug*/
 		err = message.u.response.error;
-		if (err)
+		if (err) {
+			printf("\n Attach failed \n");
 			EPRINTF("attach failed: %d\n", err);
+		}
 	} else {
 		EPRINTF("got unexpected result '%s' from %d\n",
 			tapdisk_message_name(message.type), id);

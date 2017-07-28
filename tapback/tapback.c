@@ -1,4 +1,4 @@
-/*
+ /*
  * Copyright (c) 2016, Citrix Systems, Inc.
  *
  * All rights reserved.
@@ -94,7 +94,8 @@ tapback_read_watch(backend_t *backend)
     watch = xs_read_watch(backend->xs, &n);
     path = watch[XS_WATCH_PATH];
     token = watch[XS_WATCH_TOKEN];
-
+    /*Add-to-debug*/
+    printf("\n Watching:%s \n", path);
     /*
      * print the path the watch triggered on for debug purposes
      *
@@ -132,8 +133,10 @@ tapback_read_watch(backend_t *backend)
     if (!strcmp(token, backend->frontend_token)) {
         ASSERT(!tapback_is_master(backend));
         err = -tapback_backend_handle_otherend_watch(backend, path);
+	printf("\n frontend watch handle triggered \n");
     } else if (!strcmp(token, backend->backend_token)) {
         err = -tapback_backend_handle_backend_watch(backend, path);
+	printf("\n backend watch handle triggered \n");
     } else {
         WARN(NULL, "invalid token \'%s\'\n", token);
         err = EINVAL;
@@ -444,18 +447,22 @@ tapback_backend_run(backend_t *backend)
     else
         INFO(NULL, "slave tapback daemon started, only serving domain %d\n",
                 backend->slave_domid);
-
+    INFO(NULL, "\n TAPDEBUG : Master started \n");/*Add-to-debug*/
+    INFO(NULL, "\n TAPDEBUG : backend token = %s \n",backend->backend_token);/*Add-to-debug*/
+    INFO(NULL, "\n TAPDEBUG : frontend token = %s\n",backend->frontend_token);/*Add-to-debug*/
+    
     do {
         fd_set rfds;
         int nfds = 0;
 
         FD_ZERO(&rfds);
         FD_SET(fd, &rfds);
-
+    	INFO(NULL, "\n TAPDEBUG : tapback started \n");/*Add-to-debug*/
         /*
          * poll the fd for changes in the XenStore path we're interested in
          */
         nfds = select(fd + 1, &rfds, NULL, NULL, NULL);
+    	INFO(NULL, "\n TAPDEBUG : wait finished \n");/*Add-to-debug*/
         if (nfds == -1) {
             if (likely(errno == EINTR))
                 continue;
@@ -464,11 +471,13 @@ tapback_backend_run(backend_t *backend)
             break;
         }
 
-        if (FD_ISSET(fd, &rfds))
-            tapback_read_watch(backend);
+        if (FD_ISSET(fd, &rfds)) {
+    	    INFO(NULL, "\n TAPDEBUG :fd is set \n");/*Add-to-debug*/
+	    printf("\n tapback read watch called \n");/*Add-to-debug*/
+	    tapback_read_watch(backend);
+	}
         DBG(NULL, "--\n");
     } while (1);
-
     return err;
 }
 

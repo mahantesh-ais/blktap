@@ -479,10 +479,12 @@ tapdisk_blktap_create_device(td_blktap_t *tap,
 	     bdi.capacity, bdi.sector_size, bdi.physical_sector_size,
 	     bdi.flags);
 
+	INFO("\n DDEBUG: ioctl entering \n");
 	err = ioctl(tap->fd, BLKTAP_IOCTL_CREATE_DEVICE, &bdi);
+	INFO("\n DDEBUG: ioctl executed \n");
 	if (!err)
 		return 0;
-
+	INFO("DDEBUG: ioctl failed");
 	err = -errno;
 	if (err == -ENOTTY || err == -ENOIOCTLCMD)
 		err = tapdisk_blktap_compat_create_device(tap, &bdi);
