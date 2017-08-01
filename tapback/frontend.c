@@ -445,23 +445,23 @@ frontend_changed(vbd_t * const device, const XenbusState state)
     printf("\n hot-plug state is %d \n",device->hotplug_status_connected);
     switch (state) {
         case XenbusStateInitialising:
-			/* if (device->hotplug_status_connected)--Commented out to check the effect */
+			/*if (device->hotplug_status_connected) ---Commenting to check the impact */
 			err = xenbus_switch_state(device, XenbusStateInitWait);
             break;
         case XenbusStateInitialised:
     	case XenbusStateConnected:
-            /*if (!device->hotplug_status_connected)
-                DBG(device, "udev scripts haven't yet run\n"); --Commented out to check the impact */
-            /*else { --Commented out in coordination to the above comment */
+            /* if (!device->hotplug_status_connected) ---Commenting to check the impact
+                DBG(device, "udev scripts haven't yet run\n"); */
+            /*else { */
                 if (device->state != XenbusStateConnected) {
                     DBG(device, "connecting to front-end\n");
            	    printf("\n TAPBACK: Connecting to device \n"); 
 	            err = xenbus_connect(device);
-                } else { /*Add-to-debug*/
+                } else { 
                     DBG(device, "already connected\n");
 		    printf("\n TAPBACK: device already connected \n"); /*Add-to-debug*/
-		} /*Add-to-debug*/
-            /*} --Commented out in coordination to the opening braces */
+		} 
+            /*} Commented in sync with above else statement */
             break;
         case XenbusStateClosing:
             err = xenbus_switch_state(device, XenbusStateClosing);
