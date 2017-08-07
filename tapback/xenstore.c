@@ -46,14 +46,17 @@ tapback_xs_vread(struct xs_handle * const xs, xs_transaction_t xst,
 
     ASSERT(xs);
 
+    printf("\nBLKTAP3_DEBUG: tapback xs vread \n");
     if (vasprintf(&path, fmt, ap) == -1) {
 		err = errno;
         WARN(NULL, "failed to vasprintf: %s\n", strerror(err));
         goto fail;
 	}
+    printf("\nBLKTAP3_DEBUG: Path is =%s \n", path);
     ASSERT(path);
 
     data = xs_read(xs, xst, path, &len);
+    printf("\nBLKTAP3_DEBUG: xs_read() returned %s \n",data);
 	err = errno;
     free(path);
 
@@ -100,6 +103,7 @@ tapback_xs_read(struct xs_handle * const xs, xs_transaction_t xst,
 
     ASSERT(xs);
 
+    printf("\nBLKTAP3_DEBUG: tapback xs read \n");
     va_start(ap, fmt);
     s = tapback_xs_vread(xs, xst, fmt, ap);
     va_end(ap);
@@ -113,7 +117,7 @@ tapback_device_read(const vbd_t * const device, xs_transaction_t xst,
 {
     ASSERT(device);
     ASSERT(path);
-
+    printf("\nBLKTAP3_DEBUG: tapback device read \n");
     return tapback_xs_read(device->backend->xs, xst, "%s/%s/%s",
             device->backend->path, device->name, path);
 }

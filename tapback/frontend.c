@@ -275,14 +275,14 @@ connect_frontend(vbd_t *device) {
     bool abort_transaction = false;
 
     ASSERT(device);
-
+    printf("\n BLKTAP3_DEBUG: Connect_frontend called \n"); 
     do {
         if (!(xst = xs_transaction_start(device->backend->xs))) {
             err = -errno;
             WARN(device, "failed to start transaction: %s\n", strerror(err));
             goto out;
         }
-
+	printf("\n BLKTAP3_DEBUG: Transaction started \n");
         abort_transaction = true;
 
         /*
@@ -301,30 +301,37 @@ connect_frontend(vbd_t *device) {
 					strerror(-err));
             break;
         }
+	printf("\n BLKTAP3_DEBUG: Updated feature barrier info\n");
 
         if ((err = tapback_device_printf(device, xst, "sector-size", true,
                         "%u", device->sector_size))) {
             WARN(device, "failed to write sector-size: %s\n", strerror(-err));
             break;
         }
+	printf("\n BLKTAP3_DEBUG: Updated sector-size info\n");
 
         if ((err = tapback_device_printf(device, xst, "sectors", true, "%llu",
                         device->sectors))) {
             WARN(device, "failed to write sectors: %s\n", strerror(-err));
             break;
         }
+	printf("\n BLKTAP3_DEBUG: Updated sectors info\n");
 
         if ((err = tapback_device_printf(device, xst, "info", true, "%u",
                         device->info))) {
             WARN(device, "failed to write info: %s\n", strerror(-err));
             break;
         }
+	printf("\n BLKTAP3_DEBUG: Updated info section\n");
+	printf("\n BLKTAP3_DEBUG: About to end the transaction \n");
+
 
 		abort_transaction = false;
         if (!xs_transaction_end(device->backend->xs, xst, 0)) {
             err = -errno;
             ASSERT(err);
         }
+	printf("\n BLKTAP3_DEBUG: Transaction end returned = %d \n",err);
     } while (err == -EAGAIN);
 
     if (abort_transaction) {
@@ -339,7 +346,7 @@ connect_frontend(vbd_t *device) {
         WARN(device, "failed to end transaction: %s\n", strerror(-err));
         goto out;
     }
-
+    printf("\nBLKTAP3_DEBUG: Switching the backend to state connected \n");
     err = -xenbus_switch_state(device, XenbusStateConnected);
     if (err)
         WARN(device, "failed to switch back-end state to connected: %s\n",
@@ -367,7 +374,7 @@ xenbus_connect(vbd_t *device) {
     if (err == ESRCH)
         goto out;
     else/*Add-to-debug  */
-	printf("\n tapdisk available and connected  \n");
+	printf("\nBLKTAP3_DEBUG: tapdisk available and connected  \n");
     /*
      * Even if tapdisk is already connected to the shared ring, we continue
      * connecting since we don't know how far the connection process had gone
@@ -375,8 +382,10 @@ xenbus_connect(vbd_t *device) {
      */
     if (err && err != -EALREADY)
         goto out;
+    printf("\nBLKTAP3_DEBUG: Calling connect_frontend() function \n");
     err = -connect_frontend(device);
 out:
+    printf("\nBLKTAP3_DEBUG: tapdisk not avaialable yet \n");
     return err;
 }
 

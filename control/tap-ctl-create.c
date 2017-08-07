@@ -46,13 +46,13 @@ tap_ctl_create(const char *params, char **devname, int flags, int parent_minor,
 		char *secondary, int timeout)
 {
 	int err, id, minor;
-
+	/*Add-to-debug printf("\n Trying to allocate:\n"); */
 	err = tap_ctl_allocate(&minor, devname);
 	/*Add-to-debug
 	printf("\n Params = %s, minor = %d, devname = %s \n",params,minor,*devname);
 	*/
 	if (err) {
-		/*printf("\n allocate failed with %d=error \n",err );Add-to-debug*/
+		printf("\n allocate failed with %d=error \n",err );/*Add-to-debug*/
 		return err;
 	}
 

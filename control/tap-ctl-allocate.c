@@ -145,7 +145,6 @@ tap_ctl_check_environment(void)
 		EPRINTF("failed to open /proc/misc: %d\n", errno);
 		return errno;
 	}
-
 	while (fscanf(f, "%d %256s", &minor, name) == 2)
 		if (!strcmp(name, BLKTAP2_CONTROL_NAME)) {
 			err = tap_ctl_make_device(BLKTAP2_CONTROL_DEVICE,
