@@ -46,34 +46,23 @@ tap_ctl_create(const char *params, char **devname, int flags, int parent_minor,
 		char *secondary, int timeout)
 {
 	int err, id, minor;
-	/*Add-to-debug printf("\n Trying to allocate:\n"); */
 	err = tap_ctl_allocate(&minor, devname);
-	/*Add-to-debug
-	printf("\n Params = %s, minor = %d, devname = %s \n",params,minor,*devname);
-	*/
 	if (err) {
-		printf("\n allocate failed with %d=error \n",err );/*Add-to-debug*/
 		return err;
 	}
 
 	id = tap_ctl_spawn();
 	if (id < 0) {
 		err = id;
-		/*printf("\n spawn failed with %d=error \n",err );Add-to-debug*/
 		goto destroy;
 	}
-	/*Add-to-debug
-	printf("\n id = %d \n", id);
-	*/
 	err = tap_ctl_attach(id, minor);
 	if (err) {
-		/*printf("\n attach failed with %d=error \n",err );Add-to-debug*/
 		goto destroy;
 	}
 	err = tap_ctl_open(id, minor, params, flags, parent_minor, secondary,
 			timeout);
 	if (err) {
-		/*printf("\n open failed with %d=error \n",err );Add-to-debug*/
 		goto detach;
 	}
 	return 0;

@@ -74,8 +74,6 @@ tap_ctl_read_raw(int fd, void *buf, size_t size, struct timeval *timeout)
 
 	if (offset != size) {
 		EPRINTF("failure reading data %zd/%zd\n", offset, size);
-		printf("\n Error reading the data -EIO =%d \n", -EIO); /*Add-to-debug*/
-		printf("\n Size=%zu, offset=%zu \n", size, offset);
 		return -EIO;
 	}
 
@@ -129,7 +127,6 @@ tap_ctl_write_message(int fd, tapdisk_message_t *message, struct timeval *timeou
 		} else
 			break;
 	}
-	/*printf("\n Sent message of size=%d \n",offset);Add-to-debug*/
 	if (offset != len) {
 		EPRINTF("failure writing message\n");
 		return -EIO;
@@ -148,7 +145,6 @@ tap_ctl_send_and_receive(int sfd, tapdisk_message_t *message,
 	if (err) {
 		EPRINTF("failed to send '%s' message\n",
 			tapdisk_message_name(message->type));
-		/*printf("\n Error sending the message \n");Add-to-debug*/
 		return err;
 	}
 
@@ -156,7 +152,6 @@ tap_ctl_send_and_receive(int sfd, tapdisk_message_t *message,
 	if (err) {
 		EPRINTF("failed to receive '%s' message\n",
 			tapdisk_message_name(message->type));
-		/*printf("\n Error recieving the message \n");Add-to-debug*/
 		return err;
 	}
 
@@ -199,7 +194,6 @@ tap_ctl_connect(const char *name, int *sfd)
 	}
 
 	strcpy(saddr.sun_path, name);
-	/*printf("\n socket path is %s \n",name);Add-to-debug*/
 	err = connect(fd, (const struct sockaddr *)&saddr, sizeof(saddr));
 	if (err) {
 		err = errno;
@@ -248,12 +242,9 @@ tap_ctl_connect_send_and_receive(int id, tapdisk_message_t *message,
 	int err, sfd;
 
 	err = tap_ctl_connect_id(id, &sfd);
-	if (err) {
-		/*printf("\n Connect-id: error = %d \n", err);Add-to-debug*/
+	if (err)
 		return err;
-	}
 	err = tap_ctl_send_and_receive(sfd, message, timeout);
-	/*printf("\n Send-recieve: error=%d \n", err);Add-to-debug*/
 	close(sfd);
 	return err;
 }

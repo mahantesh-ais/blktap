@@ -54,8 +54,8 @@ tapback_device_unwatch_frontend_state(vbd_t * const device)
     ASSERT(device);
 
     if (device->frontend_state_path)
-		/* TODO check return code */
-        xs_unwatch(device->backend->xs, device->frontend_state_path,
+    /* TODO check return code */
+    xs_unwatch(device->backend->xs, device->frontend_state_path,
                 device->backend->frontend_token);
 
     free(device->frontend_state_path);
@@ -74,17 +74,22 @@ tapback_backend_destroy_device(vbd_t * const device)
 	int err;
 
     ASSERT(device);
-
+    if(log_level == LOG_DEBUG)   
+	printf("\nBLKTAP3_DEBUG: Removing VBD \n");
     DBG(device, "removing VBD\n");
 
 	if (device->tap && device->connected) {
-
+		if(log_level == LOG_DEBUG)
+		    printf("\nBLKTAP3_DEBUG: Device still connected, disconnecting and destroying now.\n");
 		DBG(device, "implicitly disconnecting tapdisk[%d] minor=%d from the "
 				"ring\n", device->tap->pid, device->minor);
-
+		if(log_level == LOG_DEBUG)
+		    printf("\nBLKTAP3_DEBUG:Backend device path is %s\n",device->backend->path);
 		err = tap_ctl_disconnect_xenblkif(device->tap->pid, device->domid,
 				device->devid, NULL);
 		if (err) {
+			if(log_level == LOG_DEBUG)
+			    printf("\nBLKTAP3_DEBUG: Error disconnecting the device\n");
 			if (err == -ESRCH || err == -ENOENT) {
 				/*
 				 * TODO tapdisk might have died without cleaning up, in which
@@ -104,17 +109,24 @@ tapback_backend_destroy_device(vbd_t * const device)
 			return err;
 		}
 	}
-
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: Removing the device from the list. \n");
     list_del(&device->backend_entry);
 
     tapback_device_unwatch_frontend_state(device);
 
-	free(device->tap);
+    /** Function tap_ctl_destroy() is supposed to be called by the hot-plug script (The same one which is used to add/create a physical-device).
+     *  If the  hot-plug script is not used, it is required to call it from here.
+     */
+    if(!device->hotplug_status_connected)
+        tap_ctl_destroy(device->tap->pid, device->minor, 0, NULL);
+
+    free(device->tap);
     free(device->frontend_path);
     free(device->name);
     free(device);
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -138,17 +150,20 @@ find_tapdisk(const int minor, tap_list_t *tap)
     tap_list_t *_tap;
     int err;
     
-    printf("\nBLKTAP3_DEBUG: find_tapdisk() function called \n");
+    if(log_level == LOG_DEBUG)
+    	printf("\nBLKTAP3_DEBUG: find_tapdisk(): searching for the tapdisk\n");
     err = tap_ctl_list(&list);
     if (err) {
         WARN(NULL, "error listing tapdisks: %s\n", strerror(-err));
-    	printf("\nBLKTAP3_DEBUG: Error listing the tapdisks \n");
+    	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: Error listing the tapdisks\n");
         goto out;
     }
 
     err = -ESRCH;
     if (!list_empty(&list)) {
-    	printf("\nBLKTAP3_DEBUG: tapdisk list not empty \n");
+    	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: tapdisk list not empty\n");
         tap_list_for_each_entry(_tap, &list) {
             if (_tap->minor == minor) {
                 err = 0;
@@ -275,7 +290,6 @@ physical_device_changed(vbd_t *device) {
     unsigned int info;
 
     ASSERT(device);
-    printf("\nBLKTAP3_DEBUG: Reading minor info \n");
     /*
      * Get the minor.
      */
@@ -287,8 +301,6 @@ physical_device_changed(vbd_t *device) {
                     strerror(-err));
         goto out;
     }
-    printf("\nBLKTAP3_DEBUG: The physical device read is=%s \n", s);
-    printf("\nBLKTAP3_DEBUG: Check for major:minor format \n");
     /*
      * The XenStore key physical-device contains "major:minor" in hex.
      */
@@ -330,7 +342,6 @@ physical_device_changed(vbd_t *device) {
         err = -EINVAL;
         goto out;
     }
-    printf("\nBLKTAP3_DEBUG: Updating the device major and minor info \n");
     device->major = major;
     device->minor = minor;
 
@@ -349,7 +360,6 @@ physical_device_changed(vbd_t *device) {
 
     DBG(device, "need to find tapdisk serving minor=%d\n", device->minor);
 
-    printf("\nBLKTAP3_DEBUG: Find the tapdisk\n");
     err = find_tapdisk(device->minor, device->tap);
     if (err) {
         WARN(device, "error looking for tapdisk: %s\n", strerror(-err));
@@ -500,15 +510,17 @@ hotplug_status_changed(vbd_t * const device) {
 	hotplug_status = tapback_device_read(device, XBT_NULL, HOTPLUG_STATUS_KEY);
 	if (!hotplug_status) {
 		err = -errno;
-		printf("\n Invalid hot-plug status \n");
+		if(log_level == LOG_DEBUG)
+		    printf("\nBLKTAP3_DEBUG: Invalid hot-plug status \n");
 		goto out;
 	}
 	if (!strcmp(hotplug_status, "connected")) {
 
         DBG(device, "physical device available (hotplug scripts ran)\n");
 
-		printf("\n hot-plug status: connected \n");
-		device->hotplug_status_connected = true;
+	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: hot-plug status: connected \n");
+	device->hotplug_status_connected = true;
 
         device_type = tapback_device_read_otherend(device, XBT_NULL,
                 "device-type");
@@ -606,7 +618,8 @@ reconnect(vbd_t *device) {
     int err;
 
     DBG(device, "attempting reconnect\n");
-    printf("\nBLKTAP3_DEBUG: Inside reconnect() \n");
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: attempting reconnect\n");
     /*
      * frontend() must be called before all other functions.
      */
@@ -626,7 +639,9 @@ reconnect(vbd_t *device) {
                     strerror(-err));
         goto out;
     }
-    printf("\nBLKTAP3_DEBUG: physical_device_changed() being invoked \n");
+    
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: physical_device_changed() being invoked \n");
     err = physical_device_changed(device);
     if (err) {
         if (err == -ENOENT) {
@@ -684,15 +699,18 @@ tapback_backend_probe_device(backend_t *backend,
     int err = 0;
     vbd_t *device = NULL;
     char * s = NULL;
-    printf("\nBLKTAP3_DEBUG: Probing the device now \n");
-	ASSERT(backend);
+    
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: Probing the device now \n");
+    ASSERT(backend);
     ASSERT(devname);
 
     ASSERT(!tapback_is_master(backend));
 
     DBG(NULL, "%s probing device\n", devname);
-    printf("\nBLKTAP3_DEBUG: Checking if the device should exist\n");
-
+	
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: Checking if the device should exist\n");
     /*
      * Ask XenStore if the device _should_ exist.
      */
@@ -701,7 +719,8 @@ tapback_backend_probe_device(backend_t *backend,
     should_exist = s != NULL;
     free(s);
 
-    printf("\nBLKTAP3_DEBUG: Searching the device list\n");
+    if(log_level == LOG_DEBUG) 	
+	printf("\nBLKTAP3_DEBUG: Searching the device list for a specific device\n");
     /*
      * Search the device list for this specific device.
      */
@@ -723,7 +742,8 @@ tapback_backend_probe_device(backend_t *backend,
      */
 
     if (remove) {
-    	printf("\nBLKTAP3_DEBUG: Remove is set\n");
+    	if(log_level == LOG_DEBUG)	
+	    printf("\nBLKTAP3_DEBUG: Remove is set\n");
         err = tapback_backend_destroy_device(device);
 		if (err) {
 			WARN(device, "failed to destroy the device: %s\n", strerror(-err));
@@ -733,7 +753,8 @@ tapback_backend_probe_device(backend_t *backend,
 	}
 
     if (create) {
-    	printf("\nBLKTAP3_DEBUG: Create is set\n");
+    	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: Create is set\n");
         device = tapback_backend_create_device(backend, domid, devname);
         if (!device) {
             err = errno;
@@ -763,10 +784,11 @@ tapback_backend_probe_device(backend_t *backend,
          * frontend() to have been called beforehand. This is achieved by
          * calling reconnect by calling reconnect() when the VBD is created.
          */
-	printf("\nBLKTAP3_DEBUG: Inside tapback_backend_probe_device() \n");
-	printf("\nBLKTAP3_DEBUG:comp=%s,PHYS_DEV_KEY=%s,FRONTEND_KEY=%s,HOT_PLUG=%s\n"					,comp,PHYS_DEV_KEY,FRONTEND_KEY,HOTPLUG_STATUS_KEY);
+    	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: comp=%s, PHYS_DEV_KEY=%s, FRONTEND_KEY=%s, HOT_PLUG=%s\n",comp,PHYS_DEV_KEY,FRONTEND_KEY,HOTPLUG_STATUS_KEY);
         if (!strcmp(PHYS_DEV_KEY, comp)) {
-    	    printf("\nBLKTAP3_DEBUG: physical_device_changed() being invoked \n");
+    	    if(log_level == LOG_DEBUG)
+		printf("\nBLKTAP3_DEBUG: physical device changed \n");
             err = physical_device_changed(device);
         }
         else if (!strcmp(FRONTEND_KEY, comp))
@@ -1012,7 +1034,8 @@ tapback_backend_handle_backend_watch(backend_t *backend,
     else
         exists = true;
     err = 0;
-    printf("\n Created XenStore key  \n");/*Add-to-debug*/
+    if(log_level == LOG_DEBUG)
+    	printf("\nBLKTAP3_DEBUG: Created XenStore key  \n");
     /*
      * Master tapback: check if there's tapback for this domain. If there isn't
      * one, create it, otherwise ignore this event, the per-domain tapback will
@@ -1027,6 +1050,8 @@ tapback_backend_handle_backend_watch(backend_t *backend,
             /*
              * remove the slave
              */
+	    if(log_level == LOG_DEBUG)
+		printf("\nBLKTAP3_DEBUG:Removing slave \n");
             tdelete(slave, &backend->master.slaves, compare);
             free(slave);
         }
@@ -1114,7 +1139,9 @@ tapback_backend_handle_backend_watch(backend_t *backend,
              * Time to go.
              */
             INFO(NULL, "domain removed, exit\n");
-            tapback_backend_destroy(backend);
+    	    if(log_level == LOG_DEBUG)
+                printf("\nBLTKAP3_DEBUG: Calling tapback_backend_destroy() and hence exiting the backend\n");
+	    tapback_backend_destroy(backend);
             exit(EXIT_SUCCESS);
 
             /*

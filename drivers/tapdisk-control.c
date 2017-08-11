@@ -709,8 +709,6 @@ tapdisk_control_open_image(struct tapdisk_ctl_conn *conn,
     ASSERT(conn);
     ASSERT(request);
     ASSERT(response);
-	printf("\nDDEBUG: Inside open_image function \n");/*Add-to-debug*/
-	fflush(stdout);
 	vbd = tapdisk_server_get_vbd(request->cookie);
 	if (!vbd) {
 		err = -EINVAL;
@@ -727,7 +725,6 @@ tapdisk_control_open_image(struct tapdisk_ctl_conn *conn,
 		goto out;
 	}
 
-	printf("\nDDEBUG: Server get succeeded \n");/*Add-to-debug*/
 	flags = 0;
 	if (request->u.params.flags & TAPDISK_MESSAGE_FLAG_RDONLY)
 		flags |= TD_OPEN_RDONLY;
@@ -757,20 +754,17 @@ tapdisk_control_open_image(struct tapdisk_ctl_conn *conn,
 		flags |= TD_OPEN_SECONDARY;
 	}
 
-	printf("\nDDEBUG: Going to execute open_vdi function\n");/*Add-to-debug*/
 	err = tapdisk_vbd_open_vdi(vbd, request->u.params.path, flags,
 				   request->u.params.prt_devnum);
 	if (err)
 		goto out;
 
-	printf("\nDDEBUG: Open_vdi executed successfully \n");/*Add-to-debug*/
 	err = tapdisk_vbd_get_disk_info(vbd, &vbd->disk_info);
 	if (err) {
         EPRINTF("VBD %d failed to get disk info: %s\n", vbd->uuid,
 				strerror(-err));
 		goto fail_close;
 	}
-	printf("\nDDEBUG: fetched disk info successfully \n");/*Add-to-debug*/
 
 	err = tapdisk_blktap_create_device(vbd->tap, &vbd->disk_info,
 					   !!(flags & TD_OPEN_RDONLY));
@@ -780,7 +774,6 @@ tapdisk_control_open_image(struct tapdisk_ctl_conn *conn,
 		goto fail_close;
 	}
 
-	printf("\nDDEBUG: blktap device created successfully \n");/*Add-to-debug*/
 	if (request->u.params.req_timeout > 0) {
 		vbd->req_timeout = request->u.params.req_timeout;
 		DPRINTF("Set request timeout to %d s\n", vbd->req_timeout);
@@ -795,7 +788,6 @@ tapdisk_control_open_image(struct tapdisk_ctl_conn *conn,
 		EPRINTF("failed to start NBD server: %d\n", err);
 		goto fail_close;
 	}
-	printf("\nDDEBUG: nbd server started successfully \n");/*Add-to-debug*/
 	err = 0;
 
 out:
@@ -1369,14 +1361,12 @@ tapdisk_control_handle_request(event_id_t id, char mode, void *private)
 
 	conn->info = NULL;
 
-	printf("\nDDEBUG: recieved the message \n");/*Add-to-debug*/
 	fflush(stdout);
 	fflush(stderr);
 	err = tapdisk_control_receive_request(conn);
 	if (err)
 		return;
 
-	printf("\nDDEBUG: recieved the message \n");/*Add-to-debug*/
 	conn->event_id = 0;
 
 	if (!(conn->info->flags & TAPDISK_MSG_REENTER) && td_control.busy) {

@@ -33,6 +33,7 @@
 #endif
 
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -43,10 +44,27 @@
 #include "tap-ctl.h"
 #include "blktap2.h"
 
+/**
+ * Free the resources allocated to the block device and remove the block file
+ */
 int
 tap_ctl_free(const int minor)
 {
 	int fd, err;
+	char *tapdev_name, *ring_name;
+	err = asprintf(&tapdev_name, "%s%d",
+		       BLKTAP2_IO_DEVICE, minor);
+	if(err == -1){
+		err = ENOMEM;
+		return err;
+	}	
+	
+	err = asprintf(&ring_name, "%s%d",
+		       BLKTAP2_RING_DEVICE, minor);
+	if(err == -1){
+		err = ENOMEM;
+		return err;
+	}	
 
 	fd = open(BLKTAP2_CONTROL_DEVICE, O_RDONLY);
 	if (fd == -1) {
@@ -57,5 +75,9 @@ tap_ctl_free(const int minor)
 	err = ioctl(fd, BLKTAP2_IOCTL_FREE_TAP, minor);
 	close(fd);
 
-	return err ? -errno : 0;
-}
+	unlink(tapdev_name);
+	unlink(ring_name);
+	free(tapdev_name);
+	free(ring_name);
+
+	return err ? -errno : 0;}

@@ -58,14 +58,16 @@ xenbus_switch_state(vbd_t * const device,
 
     err = -tapback_device_printf(device, XBT_NULL, "state", false, "%u",
             state);
-    printf("\n trying to switch the backend state \n");/*Add-to-debug */
+    if(log_level == LOG_DEBUG)
+        printf("\nBLKTAP3_DEBUG: trying to switch the backend state \n");
     if (err)
         WARN(device, "failed to switch back-end state to %s: %s\n",
                 xenbus_strstate(state), strerror(err));
     else {
         DBG(device, "switched back-end state to %s\n", xenbus_strstate(state));
         device->state = state;
-	printf("\nSwitched the state of the backend device \n");/*Add-to-debug */
+	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: Switched the state of the backend device \n");
     }
     return err;
 }
@@ -275,14 +277,16 @@ connect_frontend(vbd_t *device) {
     bool abort_transaction = false;
 
     ASSERT(device);
-    printf("\n BLKTAP3_DEBUG: Connect_frontend called \n"); 
+    if(log_level == LOG_DEBUG)
+	printf("\n BLKTAP3_DEBUG: Connect_frontend called \n");
     do {
         if (!(xst = xs_transaction_start(device->backend->xs))) {
             err = -errno;
             WARN(device, "failed to start transaction: %s\n", strerror(err));
             goto out;
         }
-	printf("\n BLKTAP3_DEBUG: Transaction started \n");
+	if(log_level == LOG_DEBUG)
+	    printf("\n BLKTAP3_DEBUG: Transaction started \n");
         abort_transaction = true;
 
         /*
@@ -301,29 +305,34 @@ connect_frontend(vbd_t *device) {
 					strerror(-err));
             break;
         }
-	printf("\n BLKTAP3_DEBUG: Updated feature barrier info\n");
+	if(log_level == LOG_DEBUG)
+	    printf("\n BLKTAP3_DEBUG: Updated feature barrier info\n");
 
         if ((err = tapback_device_printf(device, xst, "sector-size", true,
                         "%u", device->sector_size))) {
             WARN(device, "failed to write sector-size: %s\n", strerror(-err));
             break;
         }
-	printf("\n BLKTAP3_DEBUG: Updated sector-size info\n");
+	if(log_level == LOG_DEBUG)
+ 	    printf("\n BLKTAP3_DEBUG: Updated sector-size info\n");
 
         if ((err = tapback_device_printf(device, xst, "sectors", true, "%llu",
                         device->sectors))) {
             WARN(device, "failed to write sectors: %s\n", strerror(-err));
             break;
         }
-	printf("\n BLKTAP3_DEBUG: Updated sectors info\n");
+	if(log_level == LOG_DEBUG)
+	    printf("\n BLKTAP3_DEBUG: Updated sectors info\n");
 
         if ((err = tapback_device_printf(device, xst, "info", true, "%u",
                         device->info))) {
             WARN(device, "failed to write info: %s\n", strerror(-err));
             break;
         }
-	printf("\n BLKTAP3_DEBUG: Updated info section\n");
-	printf("\n BLKTAP3_DEBUG: About to end the transaction \n");
+	if(log_level == LOG_DEBUG)
+	    printf("\n BLKTAP3_DEBUG: Updated info section\n");
+	if(log_level == LOG_DEBUG)
+	    printf("\n BLKTAP3_DEBUG: Ending transaction \n");
 
 
 		abort_transaction = false;
@@ -331,7 +340,8 @@ connect_frontend(vbd_t *device) {
             err = -errno;
             ASSERT(err);
         }
-	printf("\n BLKTAP3_DEBUG: Transaction end returned = %d \n",err);
+	if(log_level == LOG_DEBUG)
+	    printf("\n BLKTAP3_DEBUG: Transaction end returned = %d \n",err);
     } while (err == -EAGAIN);
 
     if (abort_transaction) {
@@ -346,7 +356,8 @@ connect_frontend(vbd_t *device) {
         WARN(device, "failed to end transaction: %s\n", strerror(-err));
         goto out;
     }
-    printf("\nBLKTAP3_DEBUG: Switching the backend to state connected \n");
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: Switching the backend to state connected \n");
     err = -xenbus_switch_state(device, XenbusStateConnected);
     if (err)
         WARN(device, "failed to switch back-end state to connected: %s\n",
@@ -373,8 +384,10 @@ xenbus_connect(vbd_t *device) {
      */
     if (err == ESRCH)
         goto out;
-    else/*Add-to-debug  */
-	printf("\nBLKTAP3_DEBUG: tapdisk available and connected  \n");
+    else {
+	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: tapdisk available and connected  \n");
+    }
     /*
      * Even if tapdisk is already connected to the shared ring, we continue
      * connecting since we don't know how far the connection process had gone
@@ -382,10 +395,12 @@ xenbus_connect(vbd_t *device) {
      */
     if (err && err != -EALREADY)
         goto out;
-    printf("\nBLKTAP3_DEBUG: Calling connect_frontend() function \n");
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: Connecting to frontend \n");
     err = -connect_frontend(device);
 out:
-    printf("\nBLKTAP3_DEBUG: tapdisk not avaialable yet \n");
+    if(log_level == LOG_DEBUG)	
+ 	printf("\nBLKTAP3_DEBUG: tapdisk not avaialable yet \n");
     return err;
 }
 
@@ -407,7 +422,8 @@ backend_close(vbd_t * const device)
     int err = 0;
 
     ASSERT(device);
-
+    if(log_level == LOG_DEBUG)
+        printf("\nBLKTAP3_DEBUG: Closing the backend\n");
     if (!device->connected) {
         /*
          * This VBD might be a CD-ROM device, or a disk device that never went
@@ -419,7 +435,8 @@ backend_close(vbd_t * const device)
 	        DBG(device, "no tapdisk connected\n");
     } else {
         ASSERT(device->tap);
-
+	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: Disconnecting tapdisk \n");
         DBG(device, "disconnecting tapdisk[%d] minor=%d from the ring\n",
             device->tap->pid, device->minor);
 
@@ -428,15 +445,22 @@ backend_close(vbd_t * const device)
 		if (err) {
 			if (err == ESRCH) {/* tapdisk might have died :-( */
 				WARN(device, "tapdisk[%d] not running\n", device->tap->pid);
+    				if(log_level == LOG_DEBUG)
+			     	    printf("\nBLKTAP3_DEBUG: tapdisk not running\n");
 				err = 0;
 			} else {
 				WARN(device, "error disconnecting tapdisk[%d] minor=%d from "
 						"the ring: %s\n", device->tap->pid, device->minor,
 						strerror(err));
+    				if(log_level == LOG_DEBUG)
+			     	    printf("\nBLKTAP3_DEBUG:Error disconnecting the tapdisk \n");
 				return err;
 			}
 		}
-
+		else {
+		if(log_level == LOG_DEBUG)
+		    printf("\nBLKTAP3_DEBUG: tapdisk disconnected\n");
+		}
         device->connected = false;
     }
 
@@ -450,11 +474,14 @@ frontend_changed(vbd_t * const device, const XenbusState state)
 
     DBG(device, "front-end switched to state %s\n", xenbus_strstate(state));
 	device->frontend_state = state;
-    printf("\n front-end new state is %s \n", xenbus_strstate(state));
-    printf("\n hot-plug state is %d \n",device->hotplug_status_connected);
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: front-end new state is %s \n", xenbus_strstate(state));
     switch (state) {
         case XenbusStateInitialising:
-			/*if (device->hotplug_status_connected) ---Commenting to check the impact */
+			/** NOTE:  hotplug status is not checked because currently hotplug script is not used to add the backend device and is being done by xl in xen
+			 *  and for the same reason, the check on hotplug is commented in the code below. 
+			 */
+			/*if (device->hotplug_status_connected) */
 			err = xenbus_switch_state(device, XenbusStateInitWait);
             break;
         case XenbusStateInitialised:
@@ -464,11 +491,13 @@ frontend_changed(vbd_t * const device, const XenbusState state)
             /*else { */
                 if (device->state != XenbusStateConnected) {
                     DBG(device, "connecting to front-end\n");
-           	    printf("\n TAPBACK: Connecting to device \n"); 
+           	    if(log_level == LOG_DEBUG)
+			printf("\n BLKTAP3_DEBUG: Connecting to device \n"); 
 	            err = xenbus_connect(device);
                 } else { 
                     DBG(device, "already connected\n");
-		    printf("\n TAPBACK: device already connected \n"); /*Add-to-debug*/
+		    if(log_level == LOG_DEBUG)
+			printf("\n BLKTAP3_DEBUG: device already connected \n");
 		} 
             /*} Commented in sync with above else statement */
             break;
@@ -520,20 +549,22 @@ tapback_backend_handle_otherend_watch(backend_t *backend,
                 path);
         return ENODEV;
     }
-    printf("\n front-end device found \n");
+    if(log_level == LOG_DEBUG)
+	printf("\nBLKTAP3_DEBUG: Corresponding front-end device found \n");
     /*
      * Read the new front-end's state.
      */
 	s = tapback_xs_read(device->backend->xs, XBT_NULL, "%s",
 			device->frontend_state_path);
     if (!s) {
-	printf("\nXen-bus node is missing \n");
+	if(log_level == LOG_DEBUG)
+	    printf("\nBLKTAP3_DEBUG: Front-end Xen-bus node is missing \n");
         err = errno;
 		/*
          * If the front-end XenBus node is missing, the XenBus device has been
          * removed: remove the XenBus back-end node.
 		 */
-		if (err == ENOENT) {
+	if (err == ENOENT) {
             err = asprintf(&_path, "%s/%s/%d/%d", XENSTORE_BACKEND,
                     device->backend->name, device->domid, device->devid);
             if (err == -1) {
@@ -542,19 +573,28 @@ tapback_backend_handle_otherend_watch(backend_t *backend,
                 goto out;
             }
             err = 0;
+	    if(log_level == LOG_DEBUG)
+		printf("\nBLK3TAP_DEBUG: xs_rm: removing the backend node=%s \n",_path);
             if (!xs_rm(device->backend->xs, XBT_NULL, _path)) {
                 if (errno != ENOENT) {
                     err = errno;
                     WARN(device, "failed to remove %s: %s\n", path,
                             strerror(err));
+		    if(log_level == LOG_DEBUG)
+			printf("\nBLK3TAP_DEBUG: xs_rm: failed to remove backend node \n");
                 }
+		    if(log_level == LOG_DEBUG)
+			printf("\nBLK3TAP_DEBUG: xs_rm: failed coz of no entry\n");
             }
-		}
+       }
+	fflush(stdout);
+	fflush(stderr);
     } else {
         state = strtol(s, &end, 0);
-        printf("\n frontend new state is %d \n",state);
 	if (*end != 0 || end == s) {
             WARN(device, "invalid XenBus state '%s'\n", s);
+	    if(log_level == LOG_DEBUG)
+		printf("\nBLKTAP3_DEBUG: invalid XenBus state\n");
             err = EINVAL;
         } else {
             err = frontend_changed(device, state);

@@ -74,13 +74,8 @@ tap_ctl_open(const int id, const int minor, const char *params, int flags,
 	}
 
 	err = tap_ctl_connect_send_and_receive(id, &message, NULL);
-	if (err) {
-		/*printf("\n send and receive failed with %d \n",err);Add-to-debug*/
+	if (err)
 		return err;
-	}
-	/*Add-to-debug
- 	printf("\n send and recieve succeeded with error=%d \n",err);
-	*/
 	switch (message.type) {
 	case TAPDISK_MESSAGE_OPEN_RSP:
 		break;

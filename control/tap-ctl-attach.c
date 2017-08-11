@@ -55,7 +55,6 @@ tap_ctl_attach(const int id, const int minor)
 		return err;
 
 	if (message.type == TAPDISK_MESSAGE_ATTACH_RSP) {
-		/*printf("\n tapdisk attach response received \n");Add-to-debug*/
 		err = message.u.response.error;
 		if (err) {
 			printf("\n Attach failed \n");
