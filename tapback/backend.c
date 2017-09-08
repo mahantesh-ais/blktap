@@ -115,12 +115,6 @@ tapback_backend_destroy_device(vbd_t * const device)
 
     tapback_device_unwatch_frontend_state(device);
 
-    /** Function tap_ctl_destroy() is supposed to be called by the hot-plug script (The same one which is used to add/create a physical-device).
-     *  If the  hot-plug script is not used, it is required to call it from here.
-     */
-    if(!device->hotplug_status_connected)
-        tap_ctl_destroy(device->tap->pid, device->minor, 0, NULL);
-
     free(device->tap);
     free(device->frontend_path);
     free(device->name);
