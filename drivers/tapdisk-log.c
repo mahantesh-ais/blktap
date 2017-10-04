@@ -93,6 +93,7 @@ tlog_logfile_print(const char *fmt, ...)
  * occurred or a USR1 has been received the log is always kept, independently
  * of whether @keep is set to false.
  */
+/**
 static void
 tlog_logfile_close(bool keep)
 {
@@ -140,6 +141,7 @@ fail:
 	tlog_logfile_close(false);
 	return err;
 }
+*/
 
 static void
 tlog_syslog_close(void)
@@ -196,14 +198,16 @@ tlog_open(const char *name, int facility, int level)
 	tapdisk_log.ident = tapdisk_syslog_ident(name);
 	tapdisk_log.facility = facility;
 
-	if (!tapdisk_log.name || !tapdisk_log.ident) {
+	if (!tapdisk_log.ident) {
 		err = -errno;
 		goto fail;
 	}
 
+	/**
 	err = tlog_logfile_open(tapdisk_log.name, level);
 	if (err)
 		goto fail;
+	*/
 
 	err = tlog_syslog_open(tapdisk_log.ident, facility);
 	if (err)
@@ -219,12 +223,14 @@ fail:
 int
 tlog_reopen(void)
 {
+	/**
 	int err;
 
 	tlog_logfile_close(true);
 	err = tlog_logfile_open(tapdisk_log.name, tapdisk_log.level);
 	if (err)
 		return err;
+	*/
 
 	tlog_syslog_close();
 	return tlog_syslog_open(tapdisk_log.ident, tapdisk_log.facility);
@@ -236,7 +242,9 @@ tlog_close(void)
 	DPRINTF("tapdisk-log: closing after %lu errors\n",
 		tapdisk_log.errors);
 
+	/**
 	tlog_logfile_close(false);
+	*/
 	tlog_syslog_close();
 
 	free(tapdisk_log.ident);
